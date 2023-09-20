@@ -5,13 +5,16 @@ import com.springapp.StudentPortalSpring.exception.authentication.InvalidCredent
 import com.springapp.StudentPortalSpring.exception.common.BadRequestException;
 import com.springapp.StudentPortalSpring.exception.common.ResourceExistsException;
 import com.springapp.StudentPortalSpring.exception.common.ResourceNotFoundException;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.stream.Collectors;
 
 public class ApiErrorHandler {
 
@@ -89,6 +92,20 @@ public class ApiErrorHandler {
                 .requestType(request.getMethod())
                 .customMessage("Resource Not Found")
                 .build(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler({MethodArgumentNotValidException.class})
+    public ResponseEntity<ApiError> handleMethodArgumentNotValidException(MethodArgumentNotValidException e, HttpServletRequest request) {
+        log.error("Exception: " + e.getLocalizedMessage() + " for " + request.getRequestURI());
+        String errorMessage = e.getBindingResult().getFieldErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+        return new ResponseEntity<>(ApiError.builder().errorMessage(errorMessage)
+                .errorCode(HttpStatus.BAD_REQUEST.toString())
+                .request(request.getRequestURI())
+                .requestType(request.getMethod())
+                .customMessage("One or more fields are invalid")
+                .build(), HttpStatus.BAD_REQUEST);
     }
 
 }
